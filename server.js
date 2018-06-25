@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const mysql = require('mysql');
 const { dbConnectionInfo, adminPasswordHash } = require('./config');
+const sha256 = require('js-sha256');
 
 // 全局异常处理
 process.on('uncaughtException', (err) => {
@@ -16,7 +17,7 @@ let window;
 // 本地服务器
 let server = express();
 server.all('*', function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Origin", "http://localhost:3000");
     res.header("Access-Control-Allow-Headers", "Content-Type,Content-Length, Authorization, Accept,X-Requested-With");
     res.header("Access-Control-Allow-Methods","PUT,POST,GET,DELETE,OPTIONS");
     res.header("Access-Control-Allow-Credentials", "true");
@@ -42,7 +43,8 @@ server.post('/request/user/login', (req, res) => {
             req.session.login = true;
             req.session.admin = true;
             return res.json({
-                success: true
+                success: true,
+                admin: true
             });
         } else {
             return res.json({
@@ -60,10 +62,48 @@ server.post('/request/user/login', (req, res) => {
                     success: false
                 });
             }
-            // TODO
-            console.log(result);
+            // 如果找到了
+            if (result.length > 0) {
+                // 获取他的手机号后 4 位
+                phone = result[0].phone;
+                password = phone[phone.length - 4];
+                password += phone[phone.length - 3];
+                password += phone[phone.length - 2];
+                password += phone[phone.length - 1];
+                // 使用sha256进行hash
+                passwordHash = sha256(password);
+                // 验证
+                if (args.password === passwordHash) {
+                    res.session.login = true;
+                    res.session.admin = false;
+                    res.session.userId = result[0].id;
+                    return res.json({
+                        success: true,
+                        admin: false,
+                        userId: result[0].id
+                    });
+                } else {
+                    return res.json({
+                        success: false
+                    });
+                }
+            } else {
+                return res.json({
+                    success: false
+                });
+            }
         });
     }
+});
+server.post('/request/user/getLoginInfo', (req, res) => {
+    let login = req.session.login ? req.session.login : false;
+    let admin =req.session.admin ? req.session.admin : false;
+    let userId = req.session.userId ? req.session.userId : -1;
+    return res.json({
+        login: login,
+        admin: admin,
+        id: userId
+    });
 });
 server.post('/request/student/getAll', (req, res) => {
     let connection = mysql.createConnection(dbConnectionInfo);
@@ -193,6 +233,33 @@ server.post('/request/student/modify', (req, res) => {
             success: suc
         });
     }, 1000);
+});
+server.post('/request/class/getAll', (req, res) => {
+    let connection = mysql.createConnection(dbConnectionInfo);
+    connection.query('select * from class', (err, t) => {
+        if (err) {
+            connection.end();
+            return res.json({
+                success: false
+            });
+        }
+        connection.end();
+        let result = [];
+        t.map((item) => {
+            result.push({
+                key: item.id,
+                id: item.id,
+                name: item.name,
+                teacher: item.teacher,
+                grade: item.grade,
+                plan: item.plan
+            });
+        });
+        return res.json({
+            success: true,
+            result: result
+        });
+    });
 });
 
 // 导出 server

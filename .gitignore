@@ -4,3 +4,10 @@
 # MacOS
 /.DS_Store
 /*/.DS_Store
+
+# node
+/node_modules
+
+# yarn
+/yarn-error.log
+/yarn.lock

@@ -129,7 +129,6 @@ server.post('/request/student/getAll', (req, res) => {
                 major: item.major,
                 sex: item.sex,
                 grade: item.grade,
-                gpa: item.gpa,
                 phone: item.phone
             });
         });
@@ -162,7 +161,6 @@ server.post('/request/student/get', (req, res) => {
                 major: t[0].major,
                 sex: t[0].sex,
                 grade: t[0].grade,
-                gpa: t[0].gpa,
                 phone: t[0].phone
             };
             return res.json({
@@ -180,8 +178,8 @@ server.post('/request/student/add', (req, res) => {
     // 建立连接
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
-    let sql = 'insert into student(number, name, college, major, sex, grade, gpa, phone) ' +
-        'values(?, ?, ?, ?, ?, ?, ?, ?)';
+    let sql = 'insert into student(number, name, college, major, sex, grade, phone) ' +
+        'values(?, ?, ?, ?, ?, ?, ?)';
     let params = [];
     params.push(args.number);
     params.push(args.name);
@@ -189,7 +187,6 @@ server.post('/request/student/add', (req, res) => {
     params.push(args.major);
     params.push(args.sex);
     params.push(args.grade);
-    params.push(args.gpa);
     params.push(args.phone);
     connection.query(sql, params, (err) => {
         setTimeout(() => {
@@ -248,7 +245,6 @@ server.post('/request/student/modify', (req, res) => {
         `update student set major = ? where id in (${idList})`,
         `update student set sex = ? where id in (${idList})`,
         `update student set grade = ? where id in (${idList})`,
-        `update student set gpa = ? where id in (${idList})`,
         `update student set phone = ? where id in (${idList})`
     ];
     let params = [
@@ -258,7 +254,6 @@ server.post('/request/student/modify', (req, res) => {
         args.major === '' ? null : [args.major],
         args.sex === '' ? null : [args.sex],
         args.grade === '' ? null : [args.grade],
-        args.gpa === '-1' ? null : [args.gpa],
         args.phone === '' ? null : [args.phone]
     ];
     for (let i = 0; i < 8; i++)
@@ -380,6 +375,164 @@ server.post('/request/class/modify', (req, res) => {
         connection.end();
         res.json({
             success: suc
+        });
+    }, 1000);
+});
+server.post('/request/class/getSelected', (req, res) => {
+    let id = req.session.userId;
+    if (id) {
+        let connection = mysql.createConnection(dbConnectionInfo);
+        connection.query(`select * from \`select\` where student = ?`, [id], (err, selected) => {
+            if (err) {
+                return res.json({
+                    success: false
+                });
+            } else {
+                let success = true;
+                let result = [];
+                selected.map((rel) => {
+                    connection.query(`select * from class where id = ? limit 1`, [rel.class], (err, t) => {
+                        if (err) {
+                            success = false;
+                        } else {
+                            if (t.length > 0) {
+                                let aClass = t[0];
+                                result.push({
+                                    key: aClass.id,
+                                    id: aClass.id,
+                                    name: aClass.name,
+                                    teacher: aClass.teacher,
+                                    gpa: rel.gpa
+                                });
+                            } else {
+                                success = false;
+                            }
+                        }
+                    });
+                });
+                setTimeout(() => {
+                    return res.json({
+                        success: success,
+                        result: result
+                    });
+                }, 1000);
+            }
+        });
+    } else {
+        return res.json({
+            success: false
+        });
+    }
+});
+server.post('/request/select/getClassByStudent', (req, res) => {
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let id = req.session.userId;
+    if (id) {
+        // 找出学生信息
+        connection.query('select * from student where id = ? limit 1', [id], (err, students) => {
+            if (err) {
+                connection.end();
+                return res.json({
+                    success: false
+                });
+            }
+            if (students.length > 0) {
+                let student = students[0];
+                // 找出已经选过的课
+                connection.query('select * from \`select\` where student = ?', [id], (err, selected) => {
+                    if (err) {
+                        connection.end();
+                        return res.json({
+                            success: false
+                        });
+                    }
+                    // 列出学生可以选的所有课
+                    connection.query('select * from class where grade = ?', [student.grade], (err, classes) => {
+                        if (err) {
+                            console.log('!!!');
+                            connection.end();
+                            return res.json({
+                                success: false
+                            });
+                        }
+                        let result = [];
+                        // 找出学生没选过的课并且返回
+                        classes.map((aClass) => {
+                            let find = false;
+                            for (let i = 0; i < selected.length; i++) {
+                                if (selected[i].class === aClass.id) {
+                                    find = true;
+                                    break;
+                                }
+                            }
+                            if (!find) result.push({
+                                key: aClass.id,
+                                id: aClass.id,
+                                name: aClass.name,
+                                teacher: aClass.teacher,
+                                grade: aClass.grade,
+                                plan: aClass.plan
+                            });
+                        });
+                        return res.json({
+                            success: true,
+                            result: result
+                        });
+                    });
+                });
+            } else {
+                connection.end();
+                return res.json({
+                    success: false
+                });
+            }
+        });
+    } else {
+        return res.json({
+            success: false
+        });
+    }
+});
+server.post('/request/select/new', (req, res) => {
+    let args = req.body;
+    let studentId = req.session.userId;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let success = true;
+    args.classes.map((aClass) => {
+        // 先查找修读这门课的总人数
+        connection.query(`select count(*) from \`select\` where class = ?`, [aClass], (err, result) => {
+            if (err) success = false;
+            else {
+                // 看人数是否已满
+                if (result.length > 0) {
+                    let count = result[0]['count(*)'];
+                    connection.query(`select * from class where id = ?`, [aClass], (err, result) => {
+                        if (err) success = false;
+                        else {
+                            if (result.length > 0) {
+                                if (count < result[0].plan) {
+                                    connection.query(`insert into \`select\`(student, class) values(?, ?)`,
+                                        [studentId, aClass], (err) => {
+                                            if (err) success = false;
+                                            else success = true;
+                                        });
+                                } else {
+                                    success = false;
+                                }
+                            } else {
+                                success = false;
+                            }
+                        }
+                    });
+                } else {
+                    success = false;
+                }
+            }
+        });
+    });
+    setTimeout(() => {
+        res.json({
+            success: success
         });
     }, 1000);
 });

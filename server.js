@@ -42,6 +42,7 @@ server.post('/request/user/login', (req, res) => {
         if (args.password === adminPasswordHash) {
             req.session.login = true;
             req.session.admin = true;
+            req.session.username = 'admin';
             return res.json({
                 success: true,
                 admin: true
@@ -74,9 +75,10 @@ server.post('/request/user/login', (req, res) => {
                 passwordHash = sha256(password);
                 // 验证
                 if (args.password === passwordHash) {
-                    res.session.login = true;
-                    res.session.admin = false;
-                    res.session.userId = result[0].id;
+                    req.session.login = true;
+                    req.session.admin = false;
+                    req.session.userId = result[0].id;
+                    req.session.username = result[0].name;
                     return res.json({
                         success: true,
                         admin: false,
@@ -99,10 +101,12 @@ server.post('/request/user/getLoginInfo', (req, res) => {
     let login = req.session.login ? req.session.login : false;
     let admin =req.session.admin ? req.session.admin : false;
     let userId = req.session.userId ? req.session.userId : -1;
+    let username = req.session.username ? req.session.username : '';
     return res.json({
         login: login,
         admin: admin,
-        id: userId
+        id: userId,
+        username: username
     });
 });
 server.post('/request/student/getAll', (req, res) => {
@@ -134,6 +138,42 @@ server.post('/request/student/getAll', (req, res) => {
             success: true,
             result: result
         });
+    });
+});
+server.post('/request/student/get', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let sql = 'select * from student where id = ? limit 1';
+    let params = [args.id];
+    connection.query(sql, params, (err, t) => {
+        if (err) {
+            connection.end();
+            return res.json({
+                success: false
+            });
+        }
+        connection.end();
+        if (t.length > 0) {
+            let r = {
+                id: t[0].id,
+                number: t[0].number,
+                name: t[0].name,
+                college: t[0].college,
+                major: t[0].major,
+                sex: t[0].sex,
+                grade: t[0].grade,
+                gpa: t[0].gpa,
+                phone: t[0].phone
+            };
+            return res.json({
+                success: true,
+                result: r
+            });
+        } else {
+            return res.json({
+                success: false
+            });
+        }
     });
 });
 server.post('/request/student/add', (req, res) => {
@@ -218,7 +258,7 @@ server.post('/request/student/modify', (req, res) => {
         args.major === '' ? null : [args.major],
         args.sex === '' ? null : [args.sex],
         args.grade === '' ? null : [args.grade],
-        args.gpa === -1 ? null : [args.gpa],
+        args.gpa === '-1' ? null : [args.gpa],
         args.phone === '' ? null : [args.phone]
     ];
     for (let i = 0; i < 8; i++)
@@ -227,8 +267,10 @@ server.post('/request/student/modify', (req, res) => {
                 if (err) suc = false;
             });
 
+    connection.end();
+    // 延迟一秒响应客户端，防止老师觉得我的数据库操作太快
+    // 顺便使客户端发呆一会以表现出动画效果
     setTimeout(() => {
-        connection.end();
         res.json({
             success: suc
         });
@@ -260,6 +302,86 @@ server.post('/request/class/getAll', (req, res) => {
             result: result
         });
     });
+});
+server.post('/request/class/add', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let sql = 'insert into class(name, teacher, grade, plan) ' +
+        'values(?, ?, ?, ?)';
+    let params = [];
+    params.push(args.name);
+    params.push(args.teacher);
+    params.push(args.grade);
+    params.push(args.plan);
+    connection.query(sql, params, (err) => {
+        setTimeout(() => {
+            if (err) {
+                connection.end();
+                return res.json({
+                    success: false
+                });
+            }
+            connection.end();
+            return res.json({
+                success: true
+            });
+        }, 1000);
+    })
+});
+server.post('/request/class/delete', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let idList = '';
+    args.ids.map((id, no) => {
+        if (no === args.ids.length - 1)
+            idList += id;
+        else
+            idList += `${id},`;
+    });
+    let sql = `delete from class where id in (${idList})`;
+    connection.query(sql, (err) => {
+        if (err) {
+            connection.end();
+            return res.json({
+                success: false
+            });
+        }
+        connection.end();
+        return res.json({
+            success: true
+        });
+    })
+});
+server.post('/request/class/modify', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let suc = true;
+    let idList = '';
+    args.ids.map((id, no) => {
+        if (no === args.ids.length - 1)
+            idList += id;
+        else
+            idList += `${id},`;
+    });
+    let sqls = [
+        `update class set name = ? where id in (${idList})`,
+        `update class set teacher = ? where id in (${idList})`
+    ];
+    let params = [
+        args.name === '' ? null : [args.name],
+        args.teacher === '' ? null : [args.teacher]
+    ];
+    for (let i = 0; i < 8; i++)
+        if (params[i])
+            connection.query(sqls[i], params[i], (err) => {
+                if (err) suc = false;
+            });
+    setTimeout(() => {
+        connection.end();
+        res.json({
+            success: suc
+        });
+    }, 1000);
 });
 
 // 导出 server

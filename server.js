@@ -221,9 +221,17 @@ server.post('/request/student/delete', (req, res) => {
                 success: false
             });
         }
-        connection.end();
-        return res.json({
-            success: true
+        connection.query(`delete from \`select\` where student in (${idList})`, (err) => {
+            if (err) {
+                connection.end();
+                return res.json({
+                    success: false
+                });
+            }
+            connection.end();
+            return res.json({
+                success: true
+            });
         });
     });
 });
@@ -341,9 +349,17 @@ server.post('/request/class/delete', (req, res) => {
                 success: false
             });
         }
-        connection.end();
-        return res.json({
-            success: true
+        connection.query(`delete from \`select where\` class in (${idList})`, (err) => {
+            if (err) {
+                connection.end();
+                return res.json({
+                    success: false
+                });
+            }
+            connection.end();
+            return res.json({
+                success: true
+            });
         });
     })
 });
@@ -535,6 +551,75 @@ server.post('/request/select/new', (req, res) => {
             success: success
         });
     }, 1000);
+});
+server.post('/request/select/getStudentsByClass', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    connection.query(`select * from \`select\` where class = ?`, [args.class], (err, rels) => {
+        if (err) {
+            connection.end();
+            return res.json({
+                success: false
+            });
+        }
+        let success = true;
+        let result = [];
+        rels.map((rel) => {
+            connection.query(`select * from student where id = ? limit 1`, [rel.student], (err, t) => {
+                if (err) success = false;
+                else {
+                    if (t.length > 0) {
+                        let student = t[0];
+                        result.push({
+                            key: student.id,
+                            id: student.id,
+                            number: student.number,
+                            name: student.name,
+                            college: student.college,
+                            major: student.major,
+                            sex: student.sex,
+                            grade: student.grade,
+                            phone: student.phone,
+                            gpa: rel.gpa
+                        });
+                    } else {
+                        success = false;
+                    }
+                }
+            });
+        });
+        setTimeout(() => {
+            connection.end();
+            return res.json({
+                success: success,
+                result: result
+            });
+        }, 1000);
+    });
+});
+server.post('/request/select/setGpa', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    let studentList = '';
+    args.students.map((student, no) => {
+        if (no === args.students.length - 1)
+            studentList += student;
+        else
+            studentList += `${student},`
+    });
+    connection.query(`update \`select\` set gpa = ? where class = ? and student in (${studentList})`,
+        [args.gpa, args.class], (err) => {
+            if (err) {
+                connection.end();
+                return res.json({
+                    success: false
+                });
+            }
+            connection.end();
+            return res.json({
+                success: true
+            });
+        });
 });
 
 // 导出 server

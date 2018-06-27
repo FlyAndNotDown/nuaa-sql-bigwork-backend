@@ -1,4 +1,5 @@
 const { server } = require('./server');
+const { listenPort } = require('./config');
 
 // 本地服务器开启监听
-server.listen(45000);
+server.listen(listenPort);

@@ -359,7 +359,7 @@ server.post('/request/class/delete', (req, res) => {
                 success: false
             });
         }
-        connection.query(`delete from \`select where\` class in (${idList})`, (err) => {
+        connection.query(`delete from \`select\` where class in (${idList})`, (err) => {
             if (err) {
                 connection.end();
                 return res.json({

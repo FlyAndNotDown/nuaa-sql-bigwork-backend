@@ -34,6 +34,7 @@ server.use(session({
 server.use(bodyParser.json());
 server.use(bodyParser.urlencoded({extended: true}));
 server.post('/request/user/login', (req, res) => {
+    console.log('[server] POST: /request/user/login');
     // 获取参数
     let args = req.body;
     // 先看看是不是管理员账户
@@ -98,6 +99,7 @@ server.post('/request/user/login', (req, res) => {
     }
 });
 server.post('/request/user/getLoginInfo', (req, res) => {
+    console.log('[server] POST: /request/user/getLoginInfo');
     let login = req.session.login ? req.session.login : false;
     let admin =req.session.admin ? req.session.admin : false;
     let userId = req.session.userId ? req.session.userId : -1;
@@ -110,6 +112,7 @@ server.post('/request/user/getLoginInfo', (req, res) => {
     });
 });
 server.post('/request/student/getAll', (req, res) => {
+    console.log('[server] POST: /request/student/getAll');
     let connection = mysql.createConnection(dbConnectionInfo);
     connection.query('select * from student', (err, r) => {
         if (err) {
@@ -140,6 +143,7 @@ server.post('/request/student/getAll', (req, res) => {
     });
 });
 server.post('/request/student/get', (req, res) => {
+    console.log('[server] POST: /request/student/get');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let sql = 'select * from student where id = ? limit 1';
@@ -175,6 +179,7 @@ server.post('/request/student/get', (req, res) => {
     });
 });
 server.post('/request/student/add', (req, res) => {
+    console.log('[server] POST: /request/student/add');
     // 建立连接
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
@@ -204,6 +209,7 @@ server.post('/request/student/add', (req, res) => {
     });
 });
 server.post('/request/student/delete', (req, res) => {
+    console.log('[server] POST: /request/student/delete');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let idList = '';
@@ -236,6 +242,7 @@ server.post('/request/student/delete', (req, res) => {
     });
 });
 server.post('/request/student/modify', (req, res) => {
+    console.log('[server] POST: /request/student/modify');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let suc = true;
@@ -280,6 +287,7 @@ server.post('/request/student/modify', (req, res) => {
     }, 1000);
 });
 server.post('/request/class/getAll', (req, res) => {
+    console.log('[server] POST: /request/class/getAll');
     let connection = mysql.createConnection(dbConnectionInfo);
     connection.query('select * from class', (err, t) => {
         if (err) {
@@ -307,6 +315,7 @@ server.post('/request/class/getAll', (req, res) => {
     });
 });
 server.post('/request/class/add', (req, res) => {
+    console.log('[server] POST: /request/class/add');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let sql = 'insert into class(name, teacher, grade, plan) ' +
@@ -332,6 +341,7 @@ server.post('/request/class/add', (req, res) => {
     })
 });
 server.post('/request/class/delete', (req, res) => {
+    console.log('[server] POST: /request/class/delete');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let idList = '';
@@ -364,6 +374,7 @@ server.post('/request/class/delete', (req, res) => {
     })
 });
 server.post('/request/class/modify', (req, res) => {
+    console.log('[server] POST: /request/class/modify');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let suc = true;
@@ -395,6 +406,7 @@ server.post('/request/class/modify', (req, res) => {
     }, 1000);
 });
 server.post('/request/class/getSelected', (req, res) => {
+    console.log('[server] POST: /request/class/getSelected');
     let id = req.session.userId;
     if (id) {
         let connection = mysql.createConnection(dbConnectionInfo);
@@ -441,6 +453,7 @@ server.post('/request/class/getSelected', (req, res) => {
     }
 });
 server.post('/request/select/getClassByStudent', (req, res) => {
+    console.log('[server] POST: /request/select/getClassByStudent');
     let connection = mysql.createConnection(dbConnectionInfo);
     let id = req.session.userId;
     if (id) {
@@ -510,6 +523,7 @@ server.post('/request/select/getClassByStudent', (req, res) => {
     }
 });
 server.post('/request/select/new', (req, res) => {
+    console.log('[server] POST: /request/select/new');
     let args = req.body;
     let studentId = req.session.userId;
     let connection = mysql.createConnection(dbConnectionInfo);
@@ -553,6 +567,7 @@ server.post('/request/select/new', (req, res) => {
     }, 1000);
 });
 server.post('/request/select/getStudentsByClass', (req, res) => {
+    console.log('[server] POST: /request/select/getStudentsByClass');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     connection.query(`select * from \`select\` where class = ?`, [args.class], (err, rels) => {
@@ -598,6 +613,7 @@ server.post('/request/select/getStudentsByClass', (req, res) => {
     });
 });
 server.post('/request/select/setGpa', (req, res) => {
+    console.log('[server] POST: /request/select/setGpa');
     let args = req.body;
     let connection = mysql.createConnection(dbConnectionInfo);
     let studentList = '';

@@ -637,6 +637,24 @@ server.post('/request/select/setGpa', (req, res) => {
             });
         });
 });
+server.post('/request/sql/do', (req, res) => {
+    let args = req.body;
+    let connection = mysql.createConnection(dbConnectionInfo);
+    connection.query(args.sql, (err, result) => {
+        if (err) {
+            connection.end();
+            return res.json({
+                success: false,
+                err: err
+            });
+        }
+        connection.end();
+        return res.json({
+            success: true,
+            result: result
+        });
+    });
+});
 
 // 导出 server
 module.exports.server = server;
